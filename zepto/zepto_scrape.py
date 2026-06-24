@@ -17,7 +17,8 @@ url=f"https://www.zepto.com/search?query={query}"
 
 driver=webdriver.Chrome()
 driver.get(url)
-time.sleep(2)
+driver.execute_script("window.scrollTo(0,document.body.scrollHeight);")
+time.sleep(5)
 
 
 price_card=driver.find_elements(By.CLASS_NAME,"cptQT7")
