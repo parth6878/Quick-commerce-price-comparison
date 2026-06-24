@@ -38,8 +38,8 @@ image=[i["src"] for i in images]
 
 # print(len(image))
 
-dict={"Name of the product":names,"Price":price,"Quantity":quantity}
-df=pd.DataFrame(dict)
+data={"Name of the product":names,"Price":price,"Quantity":quantity}
+df=pd.DataFrame(data)
 df.to_csv("blinkit_data.csv")
 #print(df.to_string)
 
