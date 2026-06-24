@@ -4,16 +4,15 @@ import os
 import pandas as pd
 from PIL import Image
 import requests
-os.chdir("quick_commerce/blinkit")
 
 
 names=[]
 price=[]
 quantity=[]
 image=[]
+filename=r"blinkit\htmls\blinkit_data.html"
 
-
-with open(r"htmls\data.html","r",encoding="utf-8") as f:
+with open(filename,"r",encoding="utf-8") as f:
     r=f.read()
     soup=BeautifulSoup(r,"html.parser")
 
@@ -37,9 +36,12 @@ image=[i["src"] for i in images]
 #     im.save(f"img{id}.png")
 
 # print(len(image))
+print(len(names))
+print(len(quantity))
+print(len(price))
 
 data={"Name of the product":names,"Price":price,"Quantity":quantity}
 df=pd.DataFrame(data)
-df.to_csv("blinkit_data.csv")
+df.to_csv(r"blinkit\blinkit_data.csv")
 #print(df.to_string)
 
