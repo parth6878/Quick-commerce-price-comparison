@@ -1,0 +1,8 @@
+project/Lib/
+project/Scripts/
+project/Include/
+project/pyvenv.cfg
+__pycache__/
+*.pyc
+*.pyo
+.vscode/
