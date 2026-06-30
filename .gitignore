@@ -6,3 +6,20 @@ __pycache__/
 *.pyc
 *.pyo
 .vscode/
+# Jupyter Notebook checkpoints and temporary files
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/
+.pytest_cache/
+
+# IPython default local directory
+.ipython/
+
+# Python compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.venv/
+env/
