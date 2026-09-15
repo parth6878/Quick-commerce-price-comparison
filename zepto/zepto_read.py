@@ -26,6 +26,6 @@ def read_zepto():
     quantities=[quantity.text for quantity in quantity_soup]
 
 
-    data={"Name of the product":names,"Price":prices,"Quantity":quantities}
+    data={"Z_Product_name":names,"Z_Price":prices,"Z_Quantity":quantities}
     df=pd.DataFrame(data)
     df.to_csv(r"zepto\zepto_data.csv")

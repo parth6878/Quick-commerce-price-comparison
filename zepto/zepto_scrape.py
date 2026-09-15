@@ -1,18 +1,24 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 import time
-
+import os
+from selenium.webdriver.chrome.options import Options
 filename=r"zepto\htmls\zepto_data.html"
 def openFile(card):
+     os.makedirs(os.path.dirname(filename), exist_ok=True)
      with open(filename,"a",encoding="utf-8") as f:
         htmlElement=card.get_attribute("outerHTML")
         f.write(htmlElement)
 
 
 def zepto_scrape(query):
+    if os.path.exists(filename):
+        os.remove(filename)
     url=f"https://www.zepto.com/search?query={query}"
 
-
+    chrome_options = Options()
+    chrome_options.add_argument("--headless=new") 
+    
     driver=webdriver.Chrome()
     driver.get(url)
     driver.execute_script("window.scrollTo(0,document.body.scrollHeight);")

@@ -26,7 +26,7 @@ def blinkit_read():
     quantity=[q.get_text(strip=True) for q in quantitys if pattern.match(q.get_text(strip=True))]
 
 
-    data={"Name of the product":names,"Price":price,"Quantity":quantity}
+    data={"B_Product_name":names,"B_Price":price,"B_Quantity":quantity}
     df=pd.DataFrame(data)
     df.to_csv(r"blinkit\blinkit_data.csv")
     

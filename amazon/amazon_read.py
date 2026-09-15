@@ -30,6 +30,10 @@ def amazon_read():
         match = qty_pattern.search(clean_n)
         quantity.append(match.group() if match else None)
 
-    data={"Product name":name,"Price":price,"Quantity":quantity}
+    data={"A_Product_name":name,"A_Price":price,"A_Quantity":quantity}
     df=pd.DataFrame(data)
     df.to_csv(r"amazon\amazon_data.csv")
+#     print(len(quantity))
+#     print(len(price))
+#     print(len(name))
+# amazon_read()
