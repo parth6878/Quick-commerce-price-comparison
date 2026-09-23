@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="QuickCompare - a sticker-market price board for Blinkit, Zepto and Amazon Fresh. Photos, pack-size normalisation and the cheapest store, instantly.">
+  <title>QuickCompare — Cheapest Grocery Prices, Sticker Board</title>
+
+  <!-- Type -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap" rel="stylesheet">
+
+  <!-- QuickCompare Stylesheet (versioned to bust stale browser caches) -->
+  <link rel="stylesheet" href="/static/style.css?v=20260923c">
+</head>
+<body>
+  <!-- ════════ Ticker ════════ -->
+  <div class="ticker" aria-hidden="true">
+    <div class="ticker-track">
+      <span>BLINKIT ✦ ZEPTO ✦ AMAZON FRESH ✦ SAME PACK, THREE PRICES ✦ NEVER OVERPAY ✦ MATCHED BY BRAND + QUANTITY ✦ </span>
+      <span>BLINKIT ✦ ZEPTO ✦ AMAZON FRESH ✦ SAME PACK, THREE PRICES ✦ NEVER OVERPAY ✦ MATCHED BY BRAND + QUANTITY ✦ </span>
+    </div>
+  </div>
+
+  <!-- ════════ Header ════════ -->
+  <header class="site-header">
+    <a class="logo-group" href="/">
+      <span class="logo-mark">⚡</span>
+      <span class="logo-title">Quick<span class="logo-accent">Compare</span></span>
+      <span class="logo-tag">price board</span>
+    </a>
+
+    <nav class="header-nav">
+      <span class="store-chip blinkit">Blinkit</span>
+      <span class="store-chip zepto">Zepto</span>
+      <span class="store-chip amazon">Amazon</span>
+      <button id="btn-theme-toggle" class="square-btn" title="Invert the board" aria-label="Toggle theme">◑</button>
+      <a class="square-btn as-link" href="/docs" target="_blank" title="FastAPI docs">API&nbsp;Docs</a>
+    </nav>
+  </header>
+
+  <main class="page">
+    <!-- ════════ Hero ════════ -->
+    <section class="hero">
+      <p class="kicker">⚡ universal quick-commerce matcher</p>
+      <h1 class="hero-title">
+        Pay less for the
+        <span class="marker">exact same</span>
+        groceries.
+      </h1>
+      <p class="hero-sub">
+        We match the product across Blinkit, Zepto and Amazon Fresh by brand, variant and pack size —
+        then stamp the cheapest one.
+      </p>
+
+      <div class="board">
+        <form id="search-form" class="board-search">
+          <span class="board-icon">⌕</span>
+          <input
+            type="text"
+            id="query-input"
+            placeholder="Type anything: Amul Milk · Brown Bread · Fortune Oil 1L · Coke Zero"
+            autocomplete="off"
+            required
+            minlength="2"
+          >
+          <button type="button" id="clear-btn" class="clear-btn" aria-label="Clear input" style="display: none;">✕</button>
+          <button type="submit" id="submit-btn" class="board-submit">Compare prices →</button>
+        </form>
+
+        <div class="board-controls">
+          <div class="mode-block">
+            <span class="control-label">Source</span>
+            <span class="switch">
+              <button type="button" class="switch-btn active" id="btn-mode-live">⚡ Live scrape</button>
+            </span>
+          </div>
+
+          <label class="check" title="Force a fresh compute and bypass the server cache">
+            <input type="checkbox" id="refresh-cache">
+            <span class="check-box">✕</span>
+            <span>Bypass cache</span>
+          </label>
+        </div>
+
+        <div class="chip-row">
+          <span class="control-label">Popular</span>
+          <button type="button" class="chip" data-query="milk">🥛 Amul Milk</button>
+          <button type="button" class="chip" data-query="bread">🍞 Bread</button>
+          <button type="button" class="chip" data-query="coke">🥤 Coke</button>
+          <button type="button" class="chip" data-query="atta">🌾 Atta</button>
+          <button type="button" class="chip" data-query="fortune oil">🌻 Oil</button>
+          <button type="button" class="chip" data-query="lays">🥔 Chips</button>
+          <button type="button" class="chip" data-query="dettol">🧼 Soap</button>
+          <button type="button" class="chip" data-query="toothpaste">🪥 Paste</button>
+          <button type="button" class="chip" data-query="coffee">☕ Coffee</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════ Loading ════════ -->
+    <section id="loading-state" class="panel state-panel" style="display: none;">
+      <div class="scan-visual">
+        <span class="scan-block b1">🟡</span>
+        <span class="scan-block b2">🟣</span>
+        <span class="scan-block b3">🟠</span>
+      </div>
+      <h3 class="state-title">Scanning the shelves…</h3>
+      <p class="state-desc" id="loading-step-text">Scraping Blinkit, Zepto and Amazon Fresh concurrently…</p>
+      <div class="stripe-bar"><span></span></div>
+    </section>
+
+    <!-- ════════ Error ════════ -->
+    <section id="error-state" class="panel state-panel" style="display: none;">
+      <div class="state-emoji">🚨</div>
+      <h3 class="state-title" id="error-title">Comparison failed</h3>
+      <p class="state-desc" id="error-message">Something went wrong talking to the stores.</p>
+      <button type="button" class="btn-solid" id="btn-retry">Retry</button>
+    </section>
+
+    <!-- ════════ Results ════════ -->
+    <section id="results-section" class="results" style="display: none;">
+      <div class="results-head">
+        <div>
+          <span class="tab-label">Price board</span>
+          <h2 class="section-title">
+            Matched deals
+            <span class="result-query-tag" id="current-query-tag">query: milk</span>
+            <span class="cache-indicator" id="cache-indicator">⚡ cached</span>
+          </h2>
+        </div>
+
+        <div class="toolbar">
+          <label class="field">
+            <span class="control-label">Store</span>
+            <select id="store-filter" class="select">
+              <option value="all">All stores</option>
+              <option value="Blinkit">Blinkit</option>
+              <option value="Zepto">Zepto</option>
+              <option value="Amazon">Amazon Fresh</option>
+            </select>
+          </label>
+          <label class="field">
+            <span class="control-label">Sort</span>
+            <select id="sort-select" class="select">
+              <option value="savings_desc">Biggest savings ₹</option>
+              <option value="savings_pct_desc">Biggest discount %</option>
+              <option value="price_asc">Lowest price ₹</option>
+              <option value="stores_desc">Most store matches</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <!-- KPI bento -->
+      <div class="kpi-row">
+        <div class="kpi kpi-lime">
+          <span class="kpi-num" id="kpi-matched-count">0</span>
+          <span class="kpi-cap">multi-store matches</span>
+        </div>
+        <div class="kpi kpi-pink">
+          <span class="kpi-num" id="kpi-max-savings">₹0</span>
+          <span class="kpi-cap">max price gap</span>
+        </div>
+        <div class="kpi kpi-blue">
+          <span class="kpi-num">3</span>
+          <span class="kpi-cap">stores compared</span>
+        </div>
+        <div class="kpi kpi-yellow">
+          <span class="kpi-num" id="kpi-total-products">0</span>
+          <span class="kpi-cap">items evaluated</span>
+        </div>
+      </div>
+
+      <!-- Deal cards -->
+      <div id="deals-grid" class="deals-grid"></div>
+
+      <div id="no-deals-box" class="panel empty-panel" style="display: none;">
+        <div class="state-emoji">🕳️</div>
+        <h3>No multi-store overlap</h3>
+        <p>Try a brand like Amul, Harvest Gold or Fortune — or smash one of the chips above.</p>
+      </div>
+
+      <!-- Single store -->
+      <div class="single-store-accordion">
+        <span class="tab-label tab-label-inline">Extras</span>
+        <button type="button" class="accordion-header" id="accordion-toggle">
+          <span class="accordion-left">
+            <span class="accordion-icon">📦</span>
+            <span class="accordion-title">Single-store items</span>
+            <span class="count-badge" id="single-store-count">0</span>
+            <span class="accordion-sub">found on only one platform</span>
+          </span>
+          <span class="chevron">▾</span>
+        </button>
+        <div id="single-store-body" class="accordion-body" style="display: none;">
+          <div id="single-store-grid" class="single-store-grid"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ════════ Modal ════════ -->
+  <div id="product-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <div>
+          <span class="modal-brand" id="modal-brand">Brand</span>
+          <h3 class="modal-title" id="modal-title">Product details</h3>
+        </div>
+        <button type="button" class="square-btn" id="modal-close" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+      <div class="modal-foot">quickcompare · pack-size normalised · prices indicative</div>
+    </div>
+  </div>
+
+  <div id="toast-container" class="toast-container"></div>
+
+  <footer class="site-footer">
+    <span><strong>QuickCompare</strong> — price arbitrage engine for quick commerce.</span>
+    <span>Blinkit · Zepto · Amazon Fresh</span>
+  </footer>
+
+  <script src="/static/app.js?v=20260923c"></script>
+</body>
+</html>
