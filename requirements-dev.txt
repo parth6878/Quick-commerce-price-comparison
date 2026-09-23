@@ -1,7 +1,0 @@
-# Developer & Testing Tools
--r requirements.txt
-pytest>=7.4.0
-pytest-asyncio>=0.21.0
-flake8>=6.1.0
-black>=23.7.0
-ipykernel>=6.25.0

@@ -1,9 +1,9 @@
-# Web Framework & API Server
+# Web Framework & ASGI Server
 fastapi>=0.100.0
 uvicorn[standard]>=0.23.0
 pydantic>=2.0.0
 
-# Data Manipulation
+# Data Manipulation & Analysis
 pandas>=2.0.0
 
 # Web Scraping & Automation
@@ -14,9 +14,14 @@ requests>=2.31.0
 # Image Processing
 Pillow>=10.0.0
 
-# Testing & Client HTTP
+# Testing & HTTP Client
 httpx>=0.25.0
 pytest>=7.4.0
+pytest-asyncio>=0.21.0
 
-# Jupyter Notebook Support (Optional)
+# Code Quality & Formatting
+black>=23.7.0
+flake8>=6.1.0
+
+# Jupyter Notebook Support
 ipykernel>=6.25.0

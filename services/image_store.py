@@ -18,7 +18,7 @@ Lookup resolution order used by the app (see app._with_images):
   4. lookup_query(query, name) any photo scraped for this query
   5. generated SVG placeholder
 
-Cross-process note: seeding runs in a separate process (seed_images.py) from
+Cross-process note: seeding runs in a separate process (scripts/seed_images.py or main.py --seed) from
 the uvicorn app, so the index file's mtime is re-checked on every lookup and
 writes merge with whatever landed on disk since we last read it.
 """

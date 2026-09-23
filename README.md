@@ -77,8 +77,7 @@ Quick-commerce-price-comparison/
 ├── .env.example                     # Environment configuration template
 ├── .gitignore                       # Production gitignore rules
 ├── README.md                        # Project documentation & reference
-├── requirements.txt                 # Core production dependencies
-├── requirements-dev.txt             # Development & testing dependencies
+├── requirements.txt                 # All dependencies (app, scrapers, testing)
 ├── app.py                           # FastAPI ASGI entrypoint & REST API routes
 ├── main.py                          # Dual-mode launcher (Web Server & CLI Query)
 │
@@ -148,11 +147,6 @@ source venv/bin/activate
 ### 3. Install Dependencies
 ```bash
 pip install -r requirements.txt
-```
-
-*(Optional) For development and testing tools:*
-```bash
-pip install -r requirements-dev.txt
 ```
 
 ### 4. Configure Environment (Optional)

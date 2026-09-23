@@ -60,7 +60,8 @@ def run_cli_comparison(query: str, live: bool = False):
         if single:
             print("\nAvailable individual store items:")
             for item in single[:10]:
-                print(f"  • [{item.get('store')}] {item.get('canonical_name')} ({item.get('quantity')}) - Rs. {item.get('lowest_price')}")
+                store_name = item.get("cheapest_store") or (list(item.get("prices", {}).keys())[0] if item.get("prices") else "Store")
+                print(f"  - [{store_name}] {item.get('canonical_name')} ({item.get('quantity') or '-'}) - Rs. {item.get('lowest_price')}")
         return
 
     # Print table header
