@@ -19,7 +19,7 @@ def zepto_scrape(query):
     chrome_options = Options()
     chrome_options.add_argument("--headless=new") 
     
-    driver=webdriver.Chrome()
+    driver=webdriver.Chrome(options=chrome_options)
     driver.get(url)
     driver.execute_script("window.scrollTo(0,document.body.scrollHeight);")
     time.sleep(15)

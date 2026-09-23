@@ -16,7 +16,7 @@ def blinkit_scrape(query):
     url=f"https://blinkit.com/s/?q={query}"
     chrome_options = Options()
     chrome_options.add_argument("--headless=new") 
-    driver = webdriver.Chrome()
+    driver = webdriver.Chrome(options=chrome_options)
     driver.get(url)
 
     driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
@@ -35,5 +35,5 @@ def blinkit_scrape(query):
         openFile(img)
 
     driver.quit()
-blinkit_scrape("milk")
+
 

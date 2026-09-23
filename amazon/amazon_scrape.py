@@ -17,11 +17,11 @@ def openFile(card):
 def amazon_scrape(query):
         if os.path.exists(filename):
               os.remove(filename)
-        url=f"https://www.amazon.in/s?k={query}&i=nowstore&rh=n%3A16392737031&crid=8Q14QYSWTQL5&sprefix=m%2Cnowstore%2C533&ref=nb_sb_noss_2"
+        url = f"https://www.amazon.in/s?k={query}&i=nowstore"
         chrome_options = Options()
         chrome_options.add_argument("--headless=new") 
 
-        driver=webdriver.Chrome()
+        driver=webdriver.Chrome(options=chrome_options)
         driver.get(url)
 
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
