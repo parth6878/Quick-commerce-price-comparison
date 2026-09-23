@@ -7,8 +7,16 @@ Used for instant demo mode (/api/demo?query=...) and resilient offline fallback
 when live scrapers encounter anti-bot barriers or timeouts.
 """
 
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Set
+import os
 import re
+
+import pandas as pd
+
+try:
+    from services.matcher import analyze_query, is_relevant_to_query
+except ImportError:  # pragma: no cover - allows importing as a flat module
+    from matcher import analyze_query, is_relevant_to_query
 
 CATALOG_DATABASE: Dict[str, Dict[str, List[Dict[str, Any]]]] = {
     # -------------------------------------------------------------
@@ -255,19 +263,104 @@ def find_matching_category(query: str) -> Optional[str]:
     return None
 
 
-def get_catalog_items(query: str) -> Dict[str, List[Dict[str, Any]]]:
+def get_query_terms(query: str) -> Set[str]:
     """
-    Returns store items for a query from the catalog database.
-    If category matches, returns items for blinkit, zepto, and amazon.
-    If no direct match, synthesizes realistic multi-store price comparison items for the query.
+    Extra relevance terms for a query.
+    e.g. 'bread' also matches 'pav'/'harvest gold', 'chips' also matches 'kurkure'.
+    Empty set when the query does not map to a known category.
     """
     category = find_matching_category(query)
-    if category and category in CATALOG_DATABASE:
-        return CATALOG_DATABASE[category]
+    if not category:
+        return set()
+    return {category, *CATEGORY_SYNONYMS.get(category, [])}
 
-    # Synthesize realistic comparison items for unknown queries (e.g. "eggs 6 pcs", "maggi noodles", "sugar 1kg")
+
+# ---------------------------------------------------------------------------
+# Bundled CSV datasets (captured from the live stores) - used as instant data
+# ---------------------------------------------------------------------------
+_ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+def _resolve_csv_path(filename: str, fallback_dir: str) -> str:
+    """Look in data/datasets first, then fallback directories."""
+    primary = os.path.join(_ROOT_DIR, "data", "datasets", filename)
+    if os.path.exists(primary):
+        return primary
+    alt = os.path.join(_ROOT_DIR, "data", filename)
+    if os.path.exists(alt):
+        return alt
+    return os.path.join(_ROOT_DIR, fallback_dir, filename)
+
+
+CSV_SOURCES: Dict[str, Dict[str, str]] = {
+    "blinkit": {
+        "store": "Blinkit",
+        "path": _resolve_csv_path("blinkit_data.csv", "blinkit"),
+        "name_col": "B_Product_name",
+        "price_col": "B_Price",
+        "qty_col": "B_Quantity",
+    },
+    "zepto": {
+        "store": "Zepto",
+        "path": _resolve_csv_path("zepto_data.csv", "zepto"),
+        "name_col": "Z_Product_name",
+        "price_col": "Z_Price",
+        "qty_col": "Z_Quantity",
+    },
+    "amazon": {
+        "store": "Amazon",
+        "path": _resolve_csv_path("amazon_data.csv", "amazon"),
+        "name_col": "A_Product_name",
+        "price_col": "A_Price",
+        "qty_col": "A_Quantity",
+    },
+}
+
+_CSV_CACHE: Dict[str, List[Dict[str, Any]]] = {}
+
+
+def _clean_cell(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, float) and pd.isna(value):
+        return ""
+    text = re.sub(r"\s+", " ", str(value).replace("\n", " ")).strip()
+    return "" if text.lower() == "nan" else text
+
+
+def load_csv_items() -> Dict[str, List[Dict[str, Any]]]:
+    """Load (and cache) the bundled per-store CSV datasets as raw item dicts."""
+    if _CSV_CACHE:
+        return {store: list(items) for store, items in _CSV_CACHE.items()}
+
+    for store_key, spec in CSV_SOURCES.items():
+        items: List[Dict[str, Any]] = []
+        if os.path.exists(spec["path"]):
+            try:
+                df = pd.read_csv(spec["path"])
+                for _, row in df.iterrows():
+                    name = _clean_cell(row.get(spec["name_col"]))
+                    if not name:
+                        continue
+                    price_raw = row.get(spec["price_col"])
+                    if isinstance(price_raw, float) and pd.isna(price_raw):
+                        price_raw = None
+                    items.append({
+                        "store": spec["store"],
+                        "name": name,
+                        "price": price_raw,
+                        "quantity": _clean_cell(row.get(spec["qty_col"])),
+                        "image_url": "",
+                    })
+            except Exception:
+                items = []
+        _CSV_CACHE[store_key] = items
+
+    return {store: list(items) for store, items in _CSV_CACHE.items()}
+
+
+def synthesize_items(query: str) -> Dict[str, List[Dict[str, Any]]]:
+    """Build a realistic 3-store comparison for queries outside every dataset."""
     q_clean = query.strip().title()
-    # Check if quantity in query
     qty_match = re.search(r"(\d+\.?\d*\s*(?:kg|g|gm|ml|l|ltr|pcs|pack|units?))\b", query, re.IGNORECASE)
     detected_qty = qty_match.group(1) if qty_match else "1 pack"
 
@@ -283,5 +376,52 @@ def get_catalog_items(query: str) -> Dict[str, List[Dict[str, Any]]]:
         "amazon": [
             {"store": "Amazon", "name": f"{q_clean} (Standard Quality)", "price": 92.0, "quantity": detected_qty, "image_url": ""},
             {"store": "Amazon", "name": f"Premium {q_clean}", "price": 138.0, "quantity": detected_qty, "image_url": ""},
-        ]
+        ],
     }
+
+
+def get_store_fallback_items(query: str, store_key: str) -> List[Dict[str, Any]]:
+    """
+    Single-store fallback used by the live scrapers when a site is unreachable.
+    Only returns bundled CSV rows that are actually relevant to the query,
+    so a failed 'bread' scrape never returns milk data.
+    """
+    query_info = analyze_query(query)
+    return [
+        item for item in load_csv_items().get(store_key, [])
+        if is_relevant_to_query(item.get("name", ""), query_info)
+    ]
+
+
+def get_local_items(query: str) -> Dict[str, List[Dict[str, Any]]]:
+    """
+    Instant, scraper-free item lookup for ANY query:
+      1. Pool every bundled dataset (milk/dairy CSVs + all catalog categories).
+      2. Keep only rows relevant to the query, using the exact same relevance
+         rules as the matcher (query brand, pack size, category synonyms).
+      3. If nothing survives (e.g. a brand we don't carry), synthesize a
+         comparison so no query ever returns empty.
+    """
+    if not query or not query.strip():
+        return synthesize_items(query or "product")
+
+    query_info = analyze_query(query, get_query_terms(query))
+
+    pool = {store: list(items) for store, items in load_csv_items().items()}
+    for category_items in CATALOG_DATABASE.values():
+        for store, items in category_items.items():
+            pool.setdefault(store, []).extend(items)
+
+    filtered = {
+        store: [
+            item for item in items
+            if item.get("name") and is_relevant_to_query(str(item["name"]), query_info)
+        ]
+        for store, items in pool.items()
+    }
+
+    if any(filtered.values()):
+        return filtered
+
+    return synthesize_items(query)
+

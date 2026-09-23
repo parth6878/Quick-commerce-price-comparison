@@ -1,14 +1,12 @@
 /**
- * QuickCompare Frontend Engine
- * Real-time asynchronous price comparison client
+ * QuickCompare — sticker market price board
+ * Search client for the Blinkit / Zepto / Amazon Fresh comparison engine.
  */
 
 (function () {
   'use strict';
 
-  // State
   const state = {
-    mode: 'demo', // 'demo' | 'live'
     query: 'milk',
     deals: [],
     singleStoreItems: [],
@@ -18,16 +16,17 @@
     selectedSort: 'savings_desc'
   };
 
-  // DOM Elements
+  const STORE_ORDER = ['Blinkit', 'Zepto', 'Amazon'];
+
   const elements = {
     form: document.getElementById('search-form'),
     queryInput: document.getElementById('query-input'),
     clearBtn: document.getElementById('clear-btn'),
-    btnModeDemo: document.getElementById('btn-mode-demo'),
     btnModeLive: document.getElementById('btn-mode-live'),
     refreshCheckbox: document.getElementById('refresh-cache'),
     chips: document.querySelectorAll('.chip'),
     loadingState: document.getElementById('loading-state'),
+    loadingStepText: document.getElementById('loading-step-text'),
     errorState: document.getElementById('error-state'),
     errorTitle: document.getElementById('error-title'),
     errorMessage: document.getElementById('error-message'),
@@ -39,48 +38,81 @@
     cacheIndicator: document.getElementById('cache-indicator'),
     storeFilter: document.getElementById('store-filter'),
     sortSelect: document.getElementById('sort-select'),
-    // KPI elements
     kpiMatched: document.getElementById('kpi-matched-count'),
     kpiMaxSavings: document.getElementById('kpi-max-savings'),
     kpiTotalProducts: document.getElementById('kpi-total-products'),
-    // Single store elements
     accordionToggle: document.getElementById('accordion-toggle'),
     singleStoreAccordion: document.querySelector('.single-store-accordion'),
     singleStoreBody: document.getElementById('single-store-body'),
     singleStoreCount: document.getElementById('single-store-count'),
     singleStoreGrid: document.getElementById('single-store-grid'),
-    // Modal
     modal: document.getElementById('product-modal'),
     modalClose: document.getElementById('modal-close'),
     modalTitle: document.getElementById('modal-title'),
     modalBrand: document.getElementById('modal-brand'),
     modalBody: document.getElementById('modal-body'),
-    // Theme toggle
     themeToggle: document.getElementById('btn-theme-toggle'),
     toastContainer: document.getElementById('toast-container')
   };
 
-  // Initialize
+  /* ------------------------------------------------------------------ *
+   * Small DOM + imagery helpers
+   * ------------------------------------------------------------------ */
+
+  function el(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined && text !== null) node.textContent = text;
+    return node;
+  }
+
+  function placeholderUrl(name, store) {
+    return `/api/image?name=${encodeURIComponent(name || 'Product')}` +
+           `&store=${encodeURIComponent(store || '')}`;
+  }
+
+  // <img> with lazy loading and a guaranteed generated-art fallback.
+  function makeImage(src, name, store, className, alt) {
+    const img = el('img', className);
+    img.loading = 'lazy';
+    img.decoding = 'async';
+    img.alt = alt || name || 'Product image';
+    // Remote store CDNs may reject requests carrying a referrer; local
+    // /static/img photos don't care either way.
+    img.referrerPolicy = 'no-referrer';
+    img.src = src || placeholderUrl(name, store);
+    img.addEventListener('error', function onErr() {
+      img.removeEventListener('error', onErr);
+      img.src = placeholderUrl(name, store);
+    });
+    return img;
+  }
+
+  function storeClass(storeName) {
+    return String(storeName || '').toLowerCase().replace(/\s+/g, '');
+  }
+
+  function hasPrice(detail) {
+    return detail && detail.price !== null && detail.price !== undefined;
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Init & events
+   * ------------------------------------------------------------------ */
+
   function init() {
     bindEvents();
-    // Pre-populate query input with default demo query
     elements.queryInput.value = 'milk';
-    // Load instant demo on initial render
     executeSearch('milk', false);
   }
 
-  // Bind Event Listeners
   function bindEvents() {
-    // Search Form Submit
     elements.form.addEventListener('submit', (e) => {
       e.preventDefault();
       const q = elements.queryInput.value.trim();
-      if (q) {
-        executeSearch(q, elements.refreshCheckbox.checked);
-      }
+      if (q) executeSearch(q, elements.refreshCheckbox.checked);
     });
 
-    // Input changes (clear button visibility)
     elements.queryInput.addEventListener('input', () => {
       elements.clearBtn.style.display = elements.queryInput.value.trim() ? 'block' : 'none';
     });
@@ -91,54 +123,33 @@
       elements.queryInput.focus();
     });
 
-    // Mode Selector
-    elements.btnModeDemo.addEventListener('click', () => {
-      setMode('demo');
-      elements.queryInput.value = 'milk';
-      executeSearch('milk', false);
-    });
+    elements.btnModeLive.addEventListener('click', () => runWithMode());
 
-    elements.btnModeLive.addEventListener('click', () => {
-      setMode('live');
-      showToast('Live Mode enabled: Searches will scrape Blinkit, Zepto, and Amazon in real-time.', 'info');
-    });
-
-    // Quick Search Chips
     elements.chips.forEach((chip) => {
       chip.addEventListener('click', () => {
         const queryVal = chip.getAttribute('data-query');
         elements.queryInput.value = queryVal;
         elements.clearBtn.style.display = 'block';
-        // If clicking milk, can use demo; otherwise switch to live scrape
-        if (queryVal === 'milk') {
-          setMode('demo');
-        } else {
-          setMode('live');
-        }
         executeSearch(queryVal, elements.refreshCheckbox.checked);
       });
     });
 
-    // Filter by Store
     elements.storeFilter.addEventListener('change', (e) => {
       state.selectedStoreFilter = e.target.value;
       applyFilterAndSort();
     });
 
-    // Sort Selection
     elements.sortSelect.addEventListener('change', (e) => {
       state.selectedSort = e.target.value;
       applyFilterAndSort();
     });
 
-    // Single Store Accordion
     elements.accordionToggle.addEventListener('click', () => {
-      const isExpanded = elements.singleStoreBody.style.display === 'block';
-      elements.singleStoreBody.style.display = isExpanded ? 'none' : 'block';
-      elements.singleStoreAccordion.classList.toggle('open', !isExpanded);
+      const isOpen = elements.singleStoreBody.style.display === 'block';
+      elements.singleStoreBody.style.display = isOpen ? 'none' : 'block';
+      elements.singleStoreAccordion.classList.toggle('open', !isOpen);
     });
 
-    // Modal Close
     elements.modalClose.addEventListener('click', closeModal);
     elements.modal.addEventListener('click', (e) => {
       if (e.target === elements.modal) closeModal();
@@ -147,43 +158,35 @@
       if (e.key === 'Escape') closeModal();
     });
 
-    // Error retry button
     elements.btnRetry.addEventListener('click', () => {
-      setMode('demo');
-      elements.queryInput.value = 'milk';
-      executeSearch('milk', false);
+      const q = elements.queryInput.value.trim() || state.query || 'milk';
+      elements.queryInput.value = q;
+      executeSearch(q, false);
     });
 
-    // Theme Toggle
     elements.themeToggle.addEventListener('click', () => {
-      document.body.classList.toggle('light-theme');
-      const isLight = document.body.classList.contains('light-theme');
-      showToast(isLight ? 'Light theme activated' : 'Dark theme activated', 'info');
+      document.body.classList.toggle('ink-mode');
+      const isInk = document.body.classList.contains('ink-mode');
+      showToast(isInk ? 'Board flipped to ink mode ◑' : 'Board flipped back to paper mode ◑', 'info');
     });
   }
 
-  function setMode(mode) {
-    state.mode = mode;
-    if (mode === 'demo') {
-      elements.btnModeDemo.classList.add('active');
-      elements.btnModeLive.classList.remove('active');
-    } else {
-      elements.btnModeLive.classList.add('active');
-      elements.btnModeDemo.classList.remove('active');
-    }
+  function runWithMode() {
+    const q = elements.queryInput.value.trim() || state.query || 'milk';
+    elements.queryInput.value = q;
+    executeSearch(q, elements.refreshCheckbox.checked);
   }
 
-  // Fetch Comparison Data
+  /* ------------------------------------------------------------------ *
+   * Search
+   * ------------------------------------------------------------------ */
+
   async function executeSearch(query, bypassCache) {
     state.query = query;
     showLoading();
 
-    let endpoint = '';
-    if (state.mode === 'demo' && query.toLowerCase() === 'milk') {
-      endpoint = '/api/demo';
-    } else {
-      endpoint = `/api/compare?query=${encodeURIComponent(query)}&refresh=${bypassCache ? 'true' : 'false'}`;
-    }
+    const endpoint = `/api/compare?query=${encodeURIComponent(query)}` +
+      `&refresh=${bypassCache ? 'true' : 'false'}`;
 
     try {
       const response = await fetch(endpoint);
@@ -201,20 +204,25 @@
       renderResults();
       showResults();
 
-      const totalMatched = state.deals.length;
-      if (totalMatched > 0) {
-        showToast(`Found ${totalMatched} multi-store matched deals for "${query}"!`, 'success');
+      if (state.deals.length > 0) {
+        showToast(`${state.deals.length} matched deals for “${query}” 🎉`, 'success');
       } else {
-        showToast(`No multi-store overlaps for "${query}". Check single-store items.`, 'warning');
+        showToast(`No overlaps for “${query}” — check single-store items.`, 'warning');
       }
     } catch (err) {
       console.error('Fetch error:', err);
-      showError('Search Request Failed', err.message || 'Unable to communicate with the comparison server.');
+      showError('Search failed', err.message || 'Cannot reach the comparison server.');
     }
   }
 
-  // Visual State Handlers
+  /* ------------------------------------------------------------------ *
+   * Visual states
+   * ------------------------------------------------------------------ */
+
   function showLoading() {
+    if (elements.loadingStepText) {
+      elements.loadingStepText.textContent = 'Scraping Blinkit, Zepto and Amazon Fresh concurrently…';
+    }
     elements.loadingState.style.display = 'block';
     elements.errorState.style.display = 'none';
     elements.resultsSection.style.display = 'none';
@@ -234,59 +242,73 @@
     elements.resultsSection.style.display = 'block';
   }
 
-  // Render Pipeline
+  /* ------------------------------------------------------------------ *
+   * Render pipeline
+   * ------------------------------------------------------------------ */
+
   function renderResults() {
-    // Header tags
     elements.currentQueryTag.textContent = `query: ${state.query}`;
     elements.cacheIndicator.style.display = state.cached ? 'inline-block' : 'none';
 
-    // KPIs
     elements.kpiMatched.textContent = state.summary.total_matched || state.deals.length;
-    elements.kpiTotalProducts.textContent = state.summary.total_products || (state.deals.length + state.singleStoreItems.length);
+    elements.kpiTotalProducts.textContent =
+      state.summary.total_products || (state.deals.length + state.singleStoreItems.length);
 
     let maxSav = 0;
-    state.deals.forEach(d => {
-      if (d.savings && d.savings > maxSav) maxSav = d.savings;
-    });
+    state.deals.forEach((d) => { if (d.savings && d.savings > maxSav) maxSav = d.savings; });
     elements.kpiMaxSavings.textContent = maxSav > 0 ? `₹${maxSav}` : '₹0';
 
-    // Filter & Sort
     applyFilterAndSort();
-
-    // Single Store Items
     renderSingleStoreItems();
   }
 
   function applyFilterAndSort() {
     let filtered = [...state.deals];
 
-    // Filter by store
     if (state.selectedStoreFilter !== 'all') {
-      filtered = filtered.filter(deal => {
-        return deal.prices && Object.keys(deal.prices).includes(state.selectedStoreFilter);
-      });
+      filtered = filtered.filter((deal) =>
+        deal.prices && Object.keys(deal.prices).includes(state.selectedStoreFilter)
+      );
     }
 
-    // Sort deals
     filtered.sort((a, b) => {
       switch (state.selectedSort) {
-        case 'savings_desc':
-          return (b.savings || 0) - (a.savings || 0);
-        case 'savings_pct_desc':
-          return (b.savings_percentage || 0) - (a.savings_percentage || 0);
-        case 'price_asc':
-          return (a.lowest_price || 0) - (b.lowest_price || 0);
-        case 'stores_desc':
-          return (b.store_count || 0) - (a.store_count || 0);
-        default:
-          return 0;
+        case 'savings_desc': return (b.savings || 0) - (a.savings || 0);
+        case 'savings_pct_desc': return (b.savings_percentage || 0) - (a.savings_percentage || 0);
+        case 'price_asc': return (a.lowest_price || 0) - (b.lowest_price || 0);
+        case 'stores_desc': return (b.store_count || 0) - (a.store_count || 0);
+        default: return 0;
       }
     });
 
     renderDeals(filtered);
   }
 
-  // Render Deal Cards
+  // ---- Deal cards -----------------------------------------------------
+
+  function buildReceiptRow(deal, storeName, detail) {
+    const isWinner = !!(deal.cheapest_stores && deal.cheapest_stores.includes(storeName));
+    const row = el('div', 'receipt-row' + (isWinner ? ' is-winner' : ''));
+
+    row.appendChild(makeImage(
+      detail.image_url,
+      detail.raw_name || deal.canonical_name,
+      storeName,
+      'row-thumb',
+      storeName
+    ));
+
+    row.appendChild(el('span', `store-name ${storeClass(storeName)}`, storeName));
+    row.appendChild(el('span', 'leader'));
+
+    if (isWinner) row.appendChild(el('span', 'stamp', 'cheapest'));
+
+    row.appendChild(el('span', 'row-price', `₹${detail.price}`));
+    if (detail.unit_price) row.appendChild(el('span', 'row-unit', `₹${detail.unit_price}/unit`));
+
+    return row;
+  }
+
   function renderDeals(deals) {
     elements.dealsGrid.innerHTML = '';
 
@@ -296,151 +318,193 @@
     }
     elements.noDealsBox.style.display = 'none';
 
-    deals.forEach((deal, idx) => {
-      const card = document.createElement('div');
-      card.className = 'deal-card';
+    deals.forEach((deal) => {
+      const card = el('article', 'deal-card');
 
-      // Price rows
-      let storeRowsHtml = '';
-      const storeOrder = ['Blinkit', 'Zepto', 'Amazon'];
-      storeOrder.forEach(storeName => {
-        const detail = deal.store_details ? deal.store_details[storeName] : null;
-        if (detail && detail.price !== null) {
-          const isWinner = deal.cheapest_stores && deal.cheapest_stores.includes(storeName);
-          const storeCssClass = storeName.toLowerCase().replace(/\s+/g, '');
-          
-          storeRowsHtml += `
-            <div class="store-row ${isWinner ? 'is-winner' : ''}">
-              <div class="store-meta">
-                <span class="store-tag ${storeCssClass}">${storeName}</span>
-                ${isWinner ? '<span class="winner-crown">👑 Lowest Price</span>' : ''}
-              </div>
-              <div class="price-meta">
-                <span class="store-price">₹${detail.price}</span>
-                ${detail.unit_price ? `<div class="unit-price-sub">₹${detail.unit_price} / unit</div>` : ''}
-              </div>
-            </div>
-          `;
-        }
-      });
+      // Shot
+      const shot = el('div', 'card-shot');
+      shot.appendChild(makeImage(
+        deal.representative_image,
+        deal.canonical_name,
+        '',
+        '',
+        deal.canonical_name
+      ));
 
-      // Savings Pill
       const hasSavings = deal.savings && deal.savings > 0;
-      const savingsHtml = hasSavings
-        ? `<div class="savings-pill">Save ₹${deal.savings} (${deal.savings_percentage}%)</div>`
-        : `<div class="savings-pill" style="background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.1); color: var(--text-secondary); box-shadow: none;">Same Price Across Stores</div>`;
+      shot.appendChild(el(
+        'span',
+        'sticker sticker-count',
+        `${deal.store_count}/3 stores`
+      ));
+      shot.appendChild(el(
+        'span',
+        'sticker sticker-save' + (hasSavings ? '' : ' is-flat'),
+        hasSavings ? `save ₹${deal.savings}` : 'same price'
+      ));
+      card.appendChild(shot);
 
-      card.innerHTML = `
-        <div>
-          <div class="deal-card-header">
-            <div class="deal-tags">
-              ${deal.brand ? `<span class="brand-badge">${escapeHtml(deal.brand)}</span>` : ''}
-              ${deal.quantity ? `<span class="qty-badge">${escapeHtml(deal.quantity)}</span>` : ''}
-            </div>
-            ${savingsHtml}
-          </div>
+      // Body
+      const body = el('div', 'card-body');
 
-          <h3 class="deal-title" title="${escapeHtml(deal.canonical_name)}">
-            ${escapeHtml(deal.canonical_name)}
-          </h3>
+      const tags = el('div', 'tag-row');
+      if (deal.brand) tags.appendChild(el('span', 'tag tag-brand', deal.brand));
+      if (deal.quantity) tags.appendChild(el('span', 'tag tag-qty', deal.quantity));
+      body.appendChild(tags);
 
-          <div class="store-price-matrix">
-            ${storeRowsHtml}
-          </div>
-        </div>
+      const title = el('h3', 'card-title', deal.canonical_name);
+      title.title = deal.canonical_name;
+      body.appendChild(title);
 
-        <div class="card-footer">
-          <div class="deal-summary-stat">
-            Cheapest at: <strong style="color: #34d399;">${escapeHtml(deal.cheapest_store)}</strong>
-          </div>
-          <button type="button" class="view-breakdown-btn" data-deal-idx="${idx}">
-            Store Breakdown
-          </button>
-        </div>
-      `;
+      const receipt = el('div', 'receipt');
+      STORE_ORDER.forEach((storeName) => {
+        const detail = deal.store_details ? deal.store_details[storeName] : null;
+        if (!hasPrice(detail)) return;
+        receipt.appendChild(buildReceiptRow(deal, storeName, detail));
+      });
+      body.appendChild(receipt);
+      card.appendChild(body);
 
-      // Attach click to breakdown button
-      const btn = card.querySelector('.view-breakdown-btn');
+      // Total / actions
+      const total = el('div', 'card-total');
+      const text = el('span', 'total-text');
+      text.append('cheapest at ');
+      text.appendChild(el('strong', null, deal.cheapest_store));
+      total.appendChild(text);
+
+      const btn = el('button', 'btn-mini', 'breakdown');
+      btn.type = 'button';
       btn.addEventListener('click', () => openModal(deal));
+      total.appendChild(btn);
 
+      card.appendChild(total);
       elements.dealsGrid.appendChild(card);
     });
   }
 
-  // Render Single Store Items
+  // ---- Single-store items --------------------------------------------
+
   function renderSingleStoreItems() {
     const items = state.singleStoreItems || [];
     elements.singleStoreCount.textContent = items.length;
     elements.singleStoreGrid.innerHTML = '';
 
     if (items.length === 0) {
-      elements.singleStoreGrid.innerHTML = '<div style="color: var(--text-muted); font-size: 0.85rem;">No single-store items found.</div>';
+      elements.singleStoreGrid.appendChild(
+        el('div', 'no-items-note', 'No single-store items found.')
+      );
       return;
     }
 
-    items.forEach(item => {
+    items.forEach((item) => {
       const storeName = Object.keys(item.prices || {})[0] || 'Store';
-      const price = item.lowest_price;
-      const storeCssClass = storeName.toLowerCase().replace(/\s+/g, '');
+      const detail = (item.store_details && item.store_details[storeName]) || {};
 
-      const card = document.createElement('div');
-      card.className = 'single-item-card';
-      card.innerHTML = `
-        <div class="single-item-title">${escapeHtml(item.canonical_name)}</div>
-        <div class="single-item-meta">
-          <span class="store-tag ${storeCssClass}">${escapeHtml(storeName)}</span>
-          <strong style="font-family: var(--font-heading); font-size: 1rem;">₹${price}</strong>
-        </div>
-      `;
+      const card = el('div', 'finding');
+      card.appendChild(makeImage(
+        item.representative_image || detail.image_url,
+        item.canonical_name,
+        storeName,
+        '',
+        item.canonical_name
+      ));
+
+      const info = el('div', 'finding-info');
+      const title = el('div', 'finding-title', item.canonical_name);
+      title.title = item.canonical_name;
+      info.appendChild(title);
+
+      const meta = el('div', 'finding-meta');
+      meta.appendChild(el('span', `store-name ${storeClass(storeName)}`, storeName));
+      meta.appendChild(el('span', 'finding-price', `₹${item.lowest_price}`));
+      info.appendChild(meta);
+
+      card.appendChild(info);
       elements.singleStoreGrid.appendChild(card);
     });
   }
 
-  // Modal Dialog
+  // ---- Modal ----------------------------------------------------------
+
   function openModal(deal) {
     elements.modalTitle.textContent = deal.canonical_name;
     elements.modalBrand.textContent = deal.brand || 'Quick Commerce';
+    elements.modalBody.innerHTML = '';
 
-    let tableRows = '';
-    const details = deal.store_details || {};
-    for (const [store, info] of Object.entries(details)) {
-      const isWinner = deal.cheapest_stores && deal.cheapest_stores.includes(store);
-      tableRows += `
-        <tr>
-          <td><strong>${escapeHtml(store)}</strong></td>
-          <td>${escapeHtml(info.raw_name || '-')}</td>
-          <td>${escapeHtml(info.quantity || deal.quantity || '-')}</td>
-          <td>
-            <span style="font-weight: 700; color: ${isWinner ? '#34d399' : 'inherit'}">
-              ₹${info.price} ${isWinner ? '👑' : ''}
-            </span>
-          </td>
-          <td>${info.unit_price ? `₹${info.unit_price}` : '-'}</td>
-        </tr>
-      `;
-    }
+    // Summary: polaroid photo + receipt lines
+    const summary = el('div', 'modal-summary');
 
-    elements.modalBody.innerHTML = `
-      <div style="margin-bottom: 16px; font-size: 0.9rem; color: var(--text-secondary);">
-        Normalized Quantity: <strong>${escapeHtml(deal.quantity || 'Standard')}</strong> | 
-        Lowest Available: <strong style="color: #34d399;">₹${deal.lowest_price}</strong> at <strong>${escapeHtml(deal.cheapest_store)}</strong>
-      </div>
-      <table class="modal-table">
-        <thead>
-          <tr>
-            <th>Store</th>
-            <th>Scraped Product Title</th>
-            <th>Pack Size</th>
-            <th>Price</th>
-            <th>Unit Price</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${tableRows}
-        </tbody>
-      </table>
-    `;
+    const polaroid = el('div', 'polaroid');
+    polaroid.appendChild(makeImage(
+      deal.representative_image,
+      deal.canonical_name,
+      '',
+      '',
+      deal.canonical_name
+    ));
+    summary.appendChild(polaroid);
 
+    const text = el('div', 'modal-summary-text');
+
+    const packLine = el('div', 'summary-line');
+    packLine.append('Pack size: ');
+    packLine.appendChild(el('strong', null, deal.quantity || 'standard'));
+    text.appendChild(packLine);
+
+    const bestLine = el('div', 'summary-line');
+    bestLine.append('Lowest: ');
+    bestLine.appendChild(el('span', 'best', `₹${deal.lowest_price}`));
+    bestLine.append(' at ');
+    bestLine.appendChild(el('strong', null, deal.cheapest_store));
+    text.appendChild(bestLine);
+
+    const gapLine = el('div', 'summary-line');
+    gapLine.textContent = deal.savings > 0
+      ? `Gap ₹${deal.savings} (${deal.savings_percentage}%) between cheapest and priciest store.`
+      : 'Identical pricing across every store.';
+    text.appendChild(gapLine);
+
+    summary.appendChild(text);
+    elements.modalBody.appendChild(summary);
+
+    // Per-store breakdown cards
+    const breakdown = el('div', 'breakdown');
+    STORE_ORDER.forEach((storeName) => {
+      const info = deal.store_details ? deal.store_details[storeName] : null;
+      if (!info) return;
+
+      const isWinner = !!(deal.cheapest_stores && deal.cheapest_stores.includes(storeName));
+      const item = el('div', 'breakdown-item' + (isWinner ? ' is-winner' : ''));
+      item.appendChild(makeImage(
+        info.image_url,
+        info.raw_name || deal.canonical_name,
+        storeName,
+        '',
+        storeName
+      ));
+
+      const details = el('div', 'breakdown-info');
+
+      const top = el('div', 'breakdown-top');
+      top.appendChild(el('span', `store-name ${storeClass(storeName)}`, storeName));
+      if (isWinner) top.appendChild(el('span', 'stamp', 'cheapest'));
+      details.appendChild(top);
+
+      const title = el('div', 'breakdown-title', info.raw_name || '-');
+      title.title = info.raw_name || '';
+      details.appendChild(title);
+
+      const price = el('div', 'breakdown-price', `₹${info.price}`);
+      details.appendChild(price);
+      if (info.unit_price) {
+        details.appendChild(el('div', 'breakdown-unit', `₹${info.unit_price} / unit`));
+      }
+
+      item.appendChild(details);
+      breakdown.appendChild(item);
+    });
+
+    elements.modalBody.appendChild(breakdown);
     elements.modal.style.display = 'flex';
   }
 
@@ -448,38 +512,23 @@
     elements.modal.style.display = 'none';
   }
 
-  // Toast System
-  function showToast(message, type = 'info') {
-    const toast = document.createElement('div');
-    toast.className = 'toast';
-    toast.style.borderLeft = type === 'success' ? '4px solid #10b981' : (type === 'warning' ? '4px solid #f59e0b' : '4px solid #6366f1');
-    toast.textContent = message;
+  // ---- Toasts ---------------------------------------------------------
 
+  function showToast(message, type = 'info') {
+    const toast = el('div', `toast ${type}`, message);
     elements.toastContainer.appendChild(toast);
     setTimeout(() => {
       toast.style.opacity = '0';
-      toast.style.transform = 'translateY(10px)';
-      toast.style.transition = 'all 0.3s ease';
-      setTimeout(() => toast.remove(), 300);
-    }, 3800);
+      toast.style.transform = 'translateX(-24px)';
+      toast.style.transition = 'all 0.25s ease';
+      setTimeout(() => toast.remove(), 260);
+    }, 3600);
   }
 
-  // Utility: HTML Escaping
-  function escapeHtml(str) {
-    if (!str) return '';
-    return String(str)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
-  }
-
-  // Kickstart on DOM ready
+  // Kickstart
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
     init();
   }
-
 })();

@@ -3,304 +3,226 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Quick Commerce Price Comparison - Find the lowest prices across Blinkit, Zepto, and Amazon Fresh instantly.">
-  <title>QuickCompare - Compare Blinkit, Zepto & Amazon Fresh Prices</title>
-  
-  <!-- Modern Google Fonts -->
+  <meta name="description" content="QuickCompare - a sticker-market price board for Blinkit, Zepto and Amazon Fresh. Photos, pack-size normalisation and the cheapest store, instantly.">
+  <title>QuickCompare — Cheapest Grocery Prices, Sticker Board</title>
+
+  <!-- Type -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  
-  <!-- Custom Stylesheet -->
-  <link rel="stylesheet" href="/static/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap" rel="stylesheet">
+
+  <!-- QuickCompare Stylesheet (versioned to bust stale browser caches) -->
+  <link rel="stylesheet" href="/static/style.css?v=20260923c">
 </head>
 <body>
-  <!-- Ambient background glow elements -->
-  <div class="glow-sphere glow-1"></div>
-  <div class="glow-sphere glow-2"></div>
-
-  <!-- Header -->
-  <header class="site-header">
-    <div class="header-container">
-      <div class="logo-group">
-        <div class="logo-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-          </svg>
-        </div>
-        <div class="logo-text">
-          <span class="logo-title">Quick<span class="highlight">Compare</span></span>
-          <span class="logo-badge">Price Intelligence</span>
-        </div>
-      </div>
-
-      <div class="store-trackers">
-        <div class="tracker-item blinkit-badge" title="Blinkit Quick Delivery">
-          <span class="dot"></span> Blinkit
-        </div>
-        <div class="tracker-item zepto-badge" title="Zepto 10-Min Delivery">
-          <span class="dot"></span> Zepto
-        </div>
-        <div class="tracker-item amazon-badge" title="Amazon Fresh">
-          <span class="dot"></span> Amazon Fresh
-        </div>
-      </div>
-
-      <div class="header-actions">
-        <button id="btn-theme-toggle" class="icon-button" title="Toggle Theme" aria-label="Toggle Theme">
-          <svg class="theme-icon-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-          </svg>
-        </button>
-        <a href="/docs" target="_blank" class="api-link" title="FastAPI Interactive Docs">
-          <span>API Docs</span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
-            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-            <polyline points="15 3 21 3 21 9"></polyline>
-            <line x1="10" y1="14" x2="21" y2="3"></line>
-          </svg>
-        </a>
-      </div>
+  <!-- ════════ Ticker ════════ -->
+  <div class="ticker" aria-hidden="true">
+    <div class="ticker-track">
+      <span>BLINKIT ✦ ZEPTO ✦ AMAZON FRESH ✦ SAME PACK, THREE PRICES ✦ NEVER OVERPAY ✦ MATCHED BY BRAND + QUANTITY ✦ </span>
+      <span>BLINKIT ✦ ZEPTO ✦ AMAZON FRESH ✦ SAME PACK, THREE PRICES ✦ NEVER OVERPAY ✦ MATCHED BY BRAND + QUANTITY ✦ </span>
     </div>
+  </div>
+
+  <!-- ════════ Header ════════ -->
+  <header class="site-header">
+    <a class="logo-group" href="/">
+      <span class="logo-mark">⚡</span>
+      <span class="logo-title">Quick<span class="logo-accent">Compare</span></span>
+      <span class="logo-tag">price board</span>
+    </a>
+
+    <nav class="header-nav">
+      <span class="store-chip blinkit">Blinkit</span>
+      <span class="store-chip zepto">Zepto</span>
+      <span class="store-chip amazon">Amazon</span>
+      <button id="btn-theme-toggle" class="square-btn" title="Invert the board" aria-label="Toggle theme">◑</button>
+      <a class="square-btn as-link" href="/docs" target="_blank" title="FastAPI docs">API&nbsp;Docs</a>
+    </nav>
   </header>
 
-  <!-- Hero Section -->
-  <main class="main-content">
-    <section class="hero-section">
-      <div class="hero-badge">
-        <span class="badge-icon">⚡</span> Universal Quick Commerce Price Matcher
-      </div>
+  <main class="page">
+    <!-- ════════ Hero ════════ -->
+    <section class="hero">
+      <p class="kicker">⚡ universal quick-commerce matcher</p>
       <h1 class="hero-title">
-        Never Overpay on Groceries.<br>
-        <span class="gradient-text">Compare Prices in Real Time.</span>
+        Pay less for the
+        <span class="marker">exact same</span>
+        groceries.
       </h1>
-      <p class="hero-subtitle">
-        Intelligently matches products across Blinkit, Zepto, and Amazon Fresh by brand, quantity, and variant — uncovering the biggest instant savings.
+      <p class="hero-sub">
+        We match the product across Blinkit, Zepto and Amazon Fresh by brand, variant and pack size —
+        then stamp the cheapest one.
       </p>
 
-      <!-- Search Box Card -->
-      <div class="search-card">
-        <form id="search-form" class="search-input-wrapper">
-          <div class="search-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-          </div>
-          <input 
-            type="text" 
-            id="query-input" 
-            placeholder="Search groceries (e.g. 'Amul Milk', 'Harvest Gold Bread', 'Fortune Oil 1L', 'Coke Zero')..." 
+      <div class="board">
+        <form id="search-form" class="board-search">
+          <span class="board-icon">⌕</span>
+          <input
+            type="text"
+            id="query-input"
+            placeholder="Type anything: Amul Milk · Brown Bread · Fortune Oil 1L · Coke Zero"
             autocomplete="off"
             required
             minlength="2"
           >
-          <button type="button" id="clear-btn" class="clear-btn" aria-label="Clear input" style="display: none;">&times;</button>
-          <button type="submit" id="submit-btn" class="submit-btn">
-            <span>Find Best Deals</span>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-              <polyline points="12 5 19 12 12 19"></polyline>
-            </svg>
-          </button>
+          <button type="button" id="clear-btn" class="clear-btn" aria-label="Clear input" style="display: none;">✕</button>
+          <button type="submit" id="submit-btn" class="board-submit">Compare prices →</button>
         </form>
 
-        <!-- Search Mode Toggles & Options -->
-        <div class="search-meta-row">
-          <div class="mode-toggles">
-            <label class="toggle-label" title="Use live scrapers or instant offline demo dataset">
-              <span class="toggle-text">Dataset Mode:</span>
-              <div class="pill-selector">
-                <button type="button" class="pill-btn active" id="btn-mode-demo">🚀 Instant Milk Demo</button>
-                <button type="button" class="pill-btn" id="btn-mode-live">⚡ Live Scrape</button>
-              </div>
-            </label>
+        <div class="board-controls">
+          <div class="mode-block">
+            <span class="control-label">Source</span>
+            <span class="switch">
+              <button type="button" class="switch-btn active" id="btn-mode-live">⚡ Live scrape</button>
+            </span>
           </div>
 
-          <div class="refresh-toggle">
-            <label class="checkbox-label" title="Force fresh scrape and bypass server memory cache">
-              <input type="checkbox" id="refresh-cache">
-              <span class="checkbox-custom"></span>
-              <span>Bypass Cache</span>
-            </label>
-          </div>
+          <label class="check" title="Force a fresh compute and bypass the server cache">
+            <input type="checkbox" id="refresh-cache">
+            <span class="check-box">✕</span>
+            <span>Bypass cache</span>
+          </label>
         </div>
 
-        <!-- Quick Query Pill Chips -->
-        <div class="suggested-pills">
-          <span class="pills-label">Popular Searches:</span>
+        <div class="chip-row">
+          <span class="control-label">Popular</span>
           <button type="button" class="chip" data-query="milk">🥛 Amul Milk</button>
-          <button type="button" class="chip" data-query="bread">🍞 Brown Bread</button>
-          <button type="button" class="chip" data-query="coke">🥤 Coca-Cola</button>
-          <button type="button" class="chip" data-query="atta">🌾 Aashirvaad Atta</button>
-          <button type="button" class="chip" data-query="fortune oil">🌻 Fortune Oil</button>
-          <button type="button" class="chip" data-query="lays">🥔 Lay's Chips</button>
-          <button type="button" class="chip" data-query="dettol">🧼 Dettol Soap</button>
-          <button type="button" class="chip" data-query="toothpaste">🪥 Colgate MaxFresh</button>
+          <button type="button" class="chip" data-query="bread">🍞 Bread</button>
+          <button type="button" class="chip" data-query="coke">🥤 Coke</button>
+          <button type="button" class="chip" data-query="atta">🌾 Atta</button>
+          <button type="button" class="chip" data-query="fortune oil">🌻 Oil</button>
+          <button type="button" class="chip" data-query="lays">🥔 Chips</button>
+          <button type="button" class="chip" data-query="dettol">🧼 Soap</button>
+          <button type="button" class="chip" data-query="toothpaste">🪥 Paste</button>
+          <button type="button" class="chip" data-query="coffee">☕ Coffee</button>
         </div>
       </div>
     </section>
 
-    <!-- Loading State Screen -->
-    <section id="loading-state" class="state-container" style="display: none;">
-      <div class="loader-visual">
-        <div class="scanner-ring"></div>
-        <div class="store-orbit orbit-blinkit">🟡</div>
-        <div class="store-orbit orbit-zepto">🟣</div>
-        <div class="store-orbit orbit-amazon">🟠</div>
+    <!-- ════════ Loading ════════ -->
+    <section id="loading-state" class="panel state-panel" style="display: none;">
+      <div class="scan-visual">
+        <span class="scan-block b1">🟡</span>
+        <span class="scan-block b2">🟣</span>
+        <span class="scan-block b3">🟠</span>
       </div>
-      <h3 class="state-title">Analyzing Prices Across Quick Commerce Stores...</h3>
-      <p class="state-desc" id="loading-step-text">Searching Blinkit, Zepto, and Amazon Fresh concurrently...</p>
-      <div class="loading-progress-bar">
-        <div class="progress-fill"></div>
-      </div>
+      <h3 class="state-title">Scanning the shelves…</h3>
+      <p class="state-desc" id="loading-step-text">Scraping Blinkit, Zepto and Amazon Fresh concurrently…</p>
+      <div class="stripe-bar"><span></span></div>
     </section>
 
-    <!-- Error State Screen -->
-    <section id="error-state" class="state-container" style="display: none;">
-      <div class="error-icon">⚠️</div>
-      <h3 class="state-title" id="error-title">Unable to complete comparison</h3>
-      <p class="state-desc" id="error-message">An error occurred while connecting to the stores.</p>
-      <button type="button" class="secondary-btn" id="btn-retry">Try Instant Demo Instead</button>
+    <!-- ════════ Error ════════ -->
+    <section id="error-state" class="panel state-panel" style="display: none;">
+      <div class="state-emoji">🚨</div>
+      <h3 class="state-title" id="error-title">Comparison failed</h3>
+      <p class="state-desc" id="error-message">Something went wrong talking to the stores.</p>
+      <button type="button" class="btn-solid" id="btn-retry">Retry</button>
     </section>
 
-    <!-- Results Section -->
-    <section id="results-section" style="display: none;">
-      <!-- KPI Stats Banner -->
-      <div class="kpi-banner">
-        <div class="kpi-card">
-          <div class="kpi-icon">🎯</div>
-          <div class="kpi-info">
-            <div class="kpi-value" id="kpi-matched-count">0</div>
-            <div class="kpi-label">Multi-Store Matches</div>
-          </div>
-        </div>
-
-        <div class="kpi-card highlight-kpi">
-          <div class="kpi-icon">💰</div>
-          <div class="kpi-info">
-            <div class="kpi-value" id="kpi-max-savings">₹0</div>
-            <div class="kpi-label">Max Price Difference</div>
-          </div>
-        </div>
-
-        <div class="kpi-card">
-          <div class="kpi-icon">🏪</div>
-          <div class="kpi-info">
-            <div class="kpi-value" id="kpi-stores-active">3 Stores</div>
-            <div class="kpi-label">Blinkit • Zepto • Amazon</div>
-          </div>
-        </div>
-
-        <div class="kpi-card">
-          <div class="kpi-icon">📦</div>
-          <div class="kpi-info">
-            <div class="kpi-value" id="kpi-total-products">0</div>
-            <div class="kpi-label">Total Items Evaluated</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Controls & Filter Toolbar -->
-      <div class="results-toolbar">
-        <div class="toolbar-left">
+    <!-- ════════ Results ════════ -->
+    <section id="results-section" class="results" style="display: none;">
+      <div class="results-head">
+        <div>
+          <span class="tab-label">Price board</span>
           <h2 class="section-title">
-            Best Matched Deals 
+            Matched deals
             <span class="result-query-tag" id="current-query-tag">query: milk</span>
-            <span class="cache-indicator" id="cache-indicator">⚡ Cached</span>
+            <span class="cache-indicator" id="cache-indicator">⚡ cached</span>
           </h2>
         </div>
 
-        <div class="toolbar-right">
-          <!-- Filter by Store -->
-          <div class="filter-group">
-            <label for="store-filter" class="filter-label">Store:</label>
-            <select id="store-filter" class="custom-select">
-              <option value="all">All Stores</option>
-              <option value="Blinkit">Available on Blinkit</option>
-              <option value="Zepto">Available on Zepto</option>
-              <option value="Amazon">Available on Amazon Fresh</option>
+        <div class="toolbar">
+          <label class="field">
+            <span class="control-label">Store</span>
+            <select id="store-filter" class="select">
+              <option value="all">All stores</option>
+              <option value="Blinkit">Blinkit</option>
+              <option value="Zepto">Zepto</option>
+              <option value="Amazon">Amazon Fresh</option>
             </select>
-          </div>
-
-          <!-- Sort Dropdown -->
-          <div class="filter-group">
-            <label for="sort-select" class="filter-label">Sort by:</label>
-            <select id="sort-select" class="custom-select">
-              <option value="savings_desc">Highest Savings (₹)</option>
-              <option value="savings_pct_desc">Biggest Discount (%)</option>
-              <option value="price_asc">Lowest Price (₹)</option>
-              <option value="stores_desc">Most Store Matches</option>
+          </label>
+          <label class="field">
+            <span class="control-label">Sort</span>
+            <select id="sort-select" class="select">
+              <option value="savings_desc">Biggest savings ₹</option>
+              <option value="savings_pct_desc">Biggest discount %</option>
+              <option value="price_asc">Lowest price ₹</option>
+              <option value="stores_desc">Most store matches</option>
             </select>
-          </div>
+          </label>
         </div>
       </div>
 
-      <!-- Deals Grid Container -->
-      <div id="deals-grid" class="deals-grid">
-        <!-- Rendered dynamically by app.js -->
+      <!-- KPI bento -->
+      <div class="kpi-row">
+        <div class="kpi kpi-lime">
+          <span class="kpi-num" id="kpi-matched-count">0</span>
+          <span class="kpi-cap">multi-store matches</span>
+        </div>
+        <div class="kpi kpi-pink">
+          <span class="kpi-num" id="kpi-max-savings">₹0</span>
+          <span class="kpi-cap">max price gap</span>
+        </div>
+        <div class="kpi kpi-blue">
+          <span class="kpi-num">3</span>
+          <span class="kpi-cap">stores compared</span>
+        </div>
+        <div class="kpi kpi-yellow">
+          <span class="kpi-num" id="kpi-total-products">0</span>
+          <span class="kpi-cap">items evaluated</span>
+        </div>
       </div>
 
-      <!-- No Deals Fallback -->
-      <div id="no-deals-box" class="empty-state" style="display: none;">
-        <div class="empty-icon">🔍</div>
-        <h3>No multi-store matches for this query</h3>
-        <p>Try searching for brand names like "Amul", "Mother Dairy", "Harvest Gold", "Fortune", or click one of the quick chips above.</p>
+      <!-- Deal cards -->
+      <div id="deals-grid" class="deals-grid"></div>
+
+      <div id="no-deals-box" class="panel empty-panel" style="display: none;">
+        <div class="state-emoji">🕳️</div>
+        <h3>No multi-store overlap</h3>
+        <p>Try a brand like Amul, Harvest Gold or Fortune — or smash one of the chips above.</p>
       </div>
 
-      <!-- Single Store Items Section (Collapsible) -->
+      <!-- Single store -->
       <div class="single-store-accordion">
+        <span class="tab-label tab-label-inline">Extras</span>
         <button type="button" class="accordion-header" id="accordion-toggle">
-          <div class="accordion-title-group">
+          <span class="accordion-left">
             <span class="accordion-icon">📦</span>
-            <span class="accordion-title">Single-Store Items (<span id="single-store-count">0</span> items)</span>
-            <span class="accordion-subtitle">Products found on only 1 platform</span>
-          </div>
-          <svg class="accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="6 9 12 15 18 9"></polyline>
-          </svg>
+            <span class="accordion-title">Single-store items</span>
+            <span class="count-badge" id="single-store-count">0</span>
+            <span class="accordion-sub">found on only one platform</span>
+          </span>
+          <span class="chevron">▾</span>
         </button>
         <div id="single-store-body" class="accordion-body" style="display: none;">
-          <div id="single-store-grid" class="single-store-grid">
-            <!-- Rendered dynamically -->
-          </div>
+          <div id="single-store-grid" class="single-store-grid"></div>
         </div>
       </div>
     </section>
   </main>
 
-  <!-- Product Details Modal Drawer -->
+  <!-- ════════ Modal ════════ -->
   <div id="product-modal" class="modal-backdrop" style="display: none;">
-    <div class="modal-dialog">
-      <div class="modal-header">
+    <div class="modal-card" role="dialog" aria-modal="true">
+      <div class="modal-head">
         <div>
-          <span class="modal-brand" id="modal-brand">Amul</span>
-          <h3 class="modal-title" id="modal-title">Product Details</h3>
+          <span class="modal-brand" id="modal-brand">Brand</span>
+          <h3 class="modal-title" id="modal-title">Product details</h3>
         </div>
-        <button type="button" id="modal-close" class="modal-close-btn">&times;</button>
+        <button type="button" class="square-btn" id="modal-close" aria-label="Close">✕</button>
       </div>
-      <div class="modal-body" id="modal-body">
-        <!-- Injected dynamically -->
-      </div>
+      <div class="modal-body" id="modal-body"></div>
+      <div class="modal-foot">quickcompare · pack-size normalised · prices indicative</div>
     </div>
   </div>
 
-  <!-- Toast Notification System -->
   <div id="toast-container" class="toast-container"></div>
 
-  <!-- Footer -->
   <footer class="site-footer">
-    <div class="footer-content">
-      <div class="footer-left">
-        <strong>QuickCompare Engine</strong> — Real-time price arbitrage & normalization for Quick Commerce.
-      </div>
-      <div class="footer-right">
-        <span>Blinkit • Zepto • Amazon Fresh</span>
-      </div>
-    </div>
+    <span><strong>QuickCompare</strong> — price arbitrage engine for quick commerce.</span>
+    <span>Blinkit · Zepto · Amazon Fresh</span>
   </footer>
 
-  <!-- Application Logic -->
-  <script src="/static/app.js"></script>
+  <script src="/static/app.js?v=20260923c"></script>
 </body>
 </html>

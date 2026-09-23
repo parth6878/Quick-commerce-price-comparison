@@ -299,9 +299,10 @@ def clean_title(title: str, brand: Optional[str] = None) -> str:
     return t
 
 
-def analyze_query(query: Optional[str]) -> Dict[str, Any]:
+def analyze_query(query: Optional[str], extra_terms: Optional[set] = None) -> Dict[str, Any]:
     """
     Parses search query to extract query brand, target quantity, and core category/product tokens.
+    `extra_terms` lets callers widen relevance (e.g. 'bread' also accepting 'pav').
     """
     if not query:
         return {"raw_query": "", "brand": None, "qty_info": {}, "tokens": set(), "core_terms": []}
@@ -332,6 +333,15 @@ def analyze_query(query: Optional[str]) -> Dict[str, Any]:
         stopwords.update(["ml", "l", "ltr", "liter", "g", "gm", "gram", "kg", "kgs", "pcs", "piece"])
 
     core_tokens = [tok for tok in raw_tokens if tok not in stopwords and len(tok) > 1]
+
+    # Widen relevance with caller supplied terms (category synonyms, aliases, ...)
+    if extra_terms:
+        seen = set(core_tokens)
+        for term in extra_terms:
+            term = str(term).strip().lower()
+            if term and term not in seen:
+                core_tokens.append(term)
+                seen.add(term)
 
     return {
         "raw_query": query,
@@ -543,7 +553,8 @@ def cluster_products(
     zepto_items: List[Dict[str, Any]],
     amazon_items: List[Dict[str, Any]],
     query: Optional[str] = None,
-    similarity_threshold: float = 0.65
+    similarity_threshold: float = 0.65,
+    extra_terms: Optional[set] = None
 ) -> Dict[str, Any]:
     """
     Groups products across Blinkit, Zepto, and Amazon Fresh driven by the search query.
@@ -551,7 +562,7 @@ def cluster_products(
     2. Clusters true equivalent products across stores.
     3. Calculates best deals and cross-store savings.
     """
-    query_info = analyze_query(query) if query else None
+    query_info = analyze_query(query, extra_terms) if query else None
     query_brand = query_info.get("brand") if query_info else None
 
     # 1. Prepare and normalize items

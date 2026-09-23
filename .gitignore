@@ -1,25 +1,72 @@
-project/Lib/
-project/Scripts/
-project/Include/
-project/pyvenv.cfg
-__pycache__/
-*.pyc
-*.pyo
-.vscode/
-# Jupyter Notebook checkpoints and temporary files
-.ipynb_checkpoints/
-*/.ipynb_checkpoints/
-.pytest_cache/
-
-# IPython default local directory
-.ipython/
-
-# Python compiled files
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
 
-# Virtual environments
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environments
 venv/
 .venv/
 env/
+ENV/
+env.bak/
+venv.bak/
+project/
+
+# Jupyter Notebook checkpoints and temporary files
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/
+.ipython/
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Environment Variables & Secrets
+.env
+.env.local
+*.env
+
+# Temporary / Scratch Files
+*.tmp
+*.tmp.*
+*.log
+htmls/
+data/*.tmp
+data/*.tmp.*
+
+# IDEs & Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+desktop.ini

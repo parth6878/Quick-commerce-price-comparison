@@ -1,18 +1,19 @@
-import os
 import re
 import time
-import pandas as pd
 from typing import List, Dict, Any
+from urllib.parse import quote_plus
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+
+from services.catalog import get_store_fallback_items
 
 def scrape_amazon(query: str, timeout: int = 15) -> List[Dict[str, Any]]:
     """
     Scrape Amazon Fresh for search query using headless Chrome.
     Returns structured list of product dicts.
     """
-    url = f"https://www.amazon.in/s?k={query}&i=nowstore"
+    url = f"https://www.amazon.in/s?k={quote_plus(query)}&i=nowstore"
     options = Options()
     options.add_argument("--headless=new")
     options.add_argument("--disable-gpu")
@@ -25,12 +26,12 @@ def scrape_amazon(query: str, timeout: int = 15) -> List[Dict[str, Any]]:
     products = []
     try:
         driver = webdriver.Chrome(options=options)
-        driver.set_page_load_timeout(30)
+        driver.set_page_load_timeout(20)
         driver.get(url)
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight / 2);")
-        time.sleep(4)
+        time.sleep(3)
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        time.sleep(4)
+        time.sleep(3)
 
         html = driver.page_source
         soup = BeautifulSoup(html, "html.parser")
@@ -79,21 +80,10 @@ def scrape_amazon(query: str, timeout: int = 15) -> List[Dict[str, Any]]:
 
     except Exception as e:
         print(f"[Amazon Scraper Error]: {e}")
-        # Fallback to local CSV ONLY if user specifically queried milk/demo and live scraping failed
-        is_milk_query = any(k in query.lower() for k in ["milk", "demo", "amul"])
-        csv_path = os.path.join(os.path.dirname(__file__), "..", "..", "amazon", "amazon_data.csv")
-        if is_milk_query and os.path.exists(csv_path) and not products:
+        # Fallback to bundled dataset rows that match this query (any category)
+        if not products:
             try:
-                df = pd.read_csv(csv_path)
-                for _, row in df.iterrows():
-                    name_val = str(row.get("A_Product_name", "")).replace("\n", " ").strip()
-                    products.append({
-                        "store": "Amazon",
-                        "name": re.sub(r"\s+", " ", name_val),
-                        "price": row.get("A_Price"),
-                        "quantity": row.get("A_Quantity", ""),
-                        "image_url": ""
-                    })
+                products = get_store_fallback_items(query, "amazon")
             except Exception:
                 pass
     finally:
